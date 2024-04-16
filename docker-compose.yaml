@@ -1,6 +1,27 @@
-version: "3"
+version: "3.8"
 
 services:
   telgpt:
     build: ./src
-    container_name: TEL-GPT
+    container_name: telgpt
+    environment:
+      - TEL_GPT_DISCORD_TOKEN=
+      - TEL_GPT_OPEN_AI_TOKEN=
+      - TEL_GPT_DEEPL_TOKEN=
+    depends_on:
+      - voicebox
+    networks:
+      - gpt-network
+
+  voicebox:
+    image: voicevox/voicevox_engine:cpu-ubuntu20.04-latest
+    container_name: voicebox
+    ports:
+      - "50021:50021"
+    networks:
+      - gpt-network
+    tty: true
+
+networks:
+  gpt-network:
+    driver: bridge

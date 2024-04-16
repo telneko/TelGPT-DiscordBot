@@ -1,7 +1,9 @@
+import datetime
+import json
 import os
+import wave
 from dataclasses import dataclass
 from enum import Enum
-from pathlib import Path
 from typing import Final
 
 import discord
@@ -30,6 +32,21 @@ class ChatGPTTTSModel(Enum):
 class ChatGPTDALLEModel(Enum):
     DALL_E_3 = "dall-e-3"
     DALL_E_2 = "dall-e-2"
+
+
+@dataclass
+class VoiceBoxSpeaker:
+    id: int
+    name: str
+    copyright: str
+
+
+class VoiceBoxSpeakers:
+    ZUNDA_MON: Final[VoiceBoxSpeaker] = VoiceBoxSpeaker(
+        id=3,
+        name="ずんだもん",
+        copyright="VOICEVOX:ずんだもん"
+    )
 
 
 @dataclass
@@ -74,6 +91,31 @@ discordClient: Final[discord.Client] = discord.Client(intents=discordIntents)
 discordCommand: Final[app_commands.CommandTree] = app_commands.CommandTree(discordClient)
 
 
+def request_voicebox_and_save(text, save_file_path: str, speaker: VoiceBoxSpeaker):
+    params = (
+        ('text', text),
+        ('speaker', speaker.id),
+    )
+    response_audio_query = requests.post(
+        f'http://voicebox:50021/audio_query',
+        params=params
+    )
+    headers = {'Content-Type': 'application/json', }
+    response_audio_stream = requests.post(
+        f'http://voicebox:50021/synthesis',
+        headers=headers,
+        params=params,
+        data=json.dumps(response_audio_query.json())
+    )
+
+    wave_writer = wave.open(save_file_path, 'wb')
+    wave_writer.setnchannels(1)
+    wave_writer.setsampwidth(2)
+    wave_writer.setframerate(24000)
+    wave_writer.writeframes(response_audio_stream.content)
+    wave_writer.close()
+
+
 # OpenAIのエラーハンドリング. エラーコードによってメッセージを変更
 def handle_bad_request_error(e: BadRequestError):
     if e.code == "content_policy_violation":
@@ -104,24 +146,19 @@ def translate_text(text: str) -> str:
 
 
 # noinspection PyBroadException
-def query_gpt_audio(model: ChatGPTTTSModel, prompt: str, sound_file_path: Path) -> dict:
+def query_gpt_audio(prompt: str, save_file_path: str, speaker: VoiceBoxSpeaker) -> dict:
     try:
-        response = openAIClient.audio.speech.create(
-            model=model.value,
-            voice="alloy",
-            input=prompt
-        )
-        response.stream_to_file(sound_file_path)
+        request_voicebox_and_save(prompt, save_file_path=save_file_path, speaker=speaker)
         return {
             "response": "OK"
         }
     except BadRequestError as e:
         return handle_bad_request_error(e)
-    except Exception:
+    except Exception as e:
         return {
             "error": {
                 "code": 1,
-                "message": "Unknown Error"
+                "message": f"Unknown Error {e}"
             }
         }
 
@@ -147,11 +184,11 @@ def query_gpt_conversation(model: ChatGPTChatModel, prompts: list[Message]) -> d
         }
     except BadRequestError as e:
         return handle_bad_request_error(e)
-    except Exception:
+    except Exception as e:
         return {
             "error": {
                 "code": 1,
-                "message": "Unknown Error"
+                "message": f"Unknown Error {e}"
             }
         }
 
@@ -173,11 +210,11 @@ def query_gpt_chat(model: ChatGPTChatModel, prompt: str) -> dict:
         }
     except BadRequestError as e:
         return handle_bad_request_error(e)
-    except Exception:
+    except Exception as e:
         return {
             "error": {
                 "code": 1,
-                "message": "Unknown Error"
+                "message": f"Unknown Error {e}"
             }
         }
 
@@ -198,11 +235,11 @@ def query_gpt_image(model: ChatGPTDALLEModel, prompt: str) -> dict:
         }
     except BadRequestError as e:
         return handle_bad_request_error(e)
-    except Exception:
+    except Exception as e:
         return {
             "error": {
                 "code": 1,
-                "message": "Unknown Error"
+                "message": f"Unknown Error {e}"
             }
         }
 
@@ -280,14 +317,20 @@ async def gpt_chat(interaction: discord.Interaction, prompt: str):
 async def gpt_audio(interaction: discord.Interaction, prompt: str):
     result_message = f"Q:{prompt}\n"
     await interaction.response.defer()
-    sound_file_path = Path(__file__).parent / "output.mp3"
-    result = query_gpt_audio(botConfig.audio_model, prompt=prompt, sound_file_path=sound_file_path)
+
+    speaker = VoiceBoxSpeakers.ZUNDA_MON
+    current_time = datetime.datetime.now().strftime('%Y%m%d%H%M%S')
+    save_file_path = f"{current_time}.wav"
+
+    result = query_gpt_audio(prompt=prompt, save_file_path=save_file_path, speaker=speaker)
     if "error" in result:
         result_message += f"{result['error']['message']}"
         await send_message_async(interaction, result_message)
     else:
-        await interaction.followup.send(content="generated", file=discord.File(sound_file_path))
-    sound_file_path.unlink()
+        await interaction.followup.send(
+            content=f"```{prompt}```\n利用する場合は以下の著作権を併記してください\n{speaker.copyright}",
+            file=discord.File(save_file_path))
+        os.remove(save_file_path)
 
 
 # noinspection PyUnresolvedReferences

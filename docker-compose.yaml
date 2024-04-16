@@ -1,0 +1,6 @@
+version: "3"
+
+services:
+  telgpt:
+    build: ./src
+    container_name: TEL-GPT

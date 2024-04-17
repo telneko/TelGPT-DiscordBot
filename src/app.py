@@ -11,8 +11,14 @@ import requests
 from discord import app_commands
 from openai import OpenAI, BadRequestError
 
-# AI が回答中のメッセージ
-answering_message: Final[str] = "回答中です..."
+
+# 定数クラス
+class Constants:
+    # AI が回答中のメッセージ
+    answering_message: Final[str] = "回答中です..."
+
+    # Github Issue 作成のエンドポイント
+    create_issue_url: Final[str] = "https://api.github.com/repos/telneko/TelGPT-DiscordBot/issues"
 
 
 # OpenAI ChatGPT の Chat モデルデータ
@@ -89,6 +95,32 @@ discordIntents = discord.Intents.default()
 discordIntents.message_content = True
 discordClient: Final[discord.Client] = discord.Client(intents=discordIntents)
 discordCommand: Final[app_commands.CommandTree] = app_commands.CommandTree(discordClient)
+
+
+def create_issue(author: str, title: str, message: str) -> dict:
+    try:
+        data = {
+            "title": f"{title} by {author}",
+            "body": message
+        }
+        response = requests.post(
+            Constants.create_issue_url,
+            headers={
+                'Authorization': f'token {os.getenv("GITHUB_ISSUE_PAT")} ',
+                'Content-Type': 'application/json',
+            },
+            data=json.dumps(data)
+        )
+        return {
+            "response": response.json()['html_url']
+        }
+    except Exception as e:
+        return {
+            "error": {
+                "code": 1,
+                "message": f"Unknown Error {e}"
+            }
+        }
 
 
 def request_voicebox_and_save(text, save_file_path: str, speaker: VoiceBoxSpeaker):
@@ -275,11 +307,11 @@ async def on_message(message: discord.Message):
 
         # 直前のメッセージが回答中のメッセージだったら質問できない
         async for channelMessage in channel.history(limit=1):
-            if channelMessage.author == discordClient.user and channelMessage.content == answering_message:
+            if channelMessage.author == discordClient.user and channelMessage.content == Constants.answering_message:
                 await channel.send("回答中は質問できません。しばらくお待ちください。")
                 return
 
-        temporary_message = await channel.send(answering_message)
+        temporary_message = await channel.send(Constants.answering_message)
 
         # スレッド内のメッセージを取得
         prompts = []
@@ -373,6 +405,24 @@ async def gpt_conversation(interaction: discord.Interaction, prompt: str):
             await interaction.followup.send(content="スレッドを生成しました: " + link)
             result_message += result['response']
             await thread.send(result_message)
+
+
+# noinspection PyUnresolvedReferences
+@discordCommand.command(name="gpt-issue", description=f"TelGPTに意見要望を出します")
+async def bot_create_issue(interaction: discord.Interaction, title: str, message: str):
+    result_message = f"```{title}\n{message}```\n"
+    await interaction.response.defer()
+
+    # ユーザネームの先頭2文字だけ表示
+    author = interaction.user.name[:2] + "***"
+    result = create_issue(author, title, message)
+    if "error" in result:
+        result_message += f"{result['error']['message']}"
+        await interaction.followup.send(content=result_message)
+    else:
+        response = result['response']
+        result_message += f"Issueを作成しました: {response}"
+        await send_message_async(interaction, result_message)
 
 
 discordClient.run(botConfig.discord_token)

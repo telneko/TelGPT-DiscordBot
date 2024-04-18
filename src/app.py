@@ -226,11 +226,15 @@ def query_gpt_conversation(model: ChatGPTChatModel, prompts: list[Message]) -> d
 
 
 # noinspection PyBroadException
-def query_gpt_chat(model: ChatGPTChatModel, prompt: str) -> dict:
+def query_gpt_chat(model: ChatGPTChatModel, prompt: str, system_setting: str) -> dict:
     try:
         response = openAIClient.chat.completions.create(
             model=model.value,
             messages=[
+                {
+                    "role": "system",
+                    "content": system_setting,
+                },
                 {
                     "role": "user",
                     "content": prompt,
@@ -336,7 +340,40 @@ async def on_message(message: discord.Message):
 async def gpt_chat(interaction: discord.Interaction, prompt: str):
     result_message = f"Q:{prompt}\n"
     await interaction.response.defer()
-    result = query_gpt_chat(botConfig.chat_model, prompt=prompt)
+    result = query_gpt_chat(botConfig.chat_model, prompt=prompt, system_setting="You are a helpful assistant.")
+    if "error" in result:
+        result_message += f"{result['error']['message']}"
+    else:
+        result_message += result['response']
+    await send_message_async(interaction, result_message)
+
+
+# noinspection PyUnresolvedReferences
+@discordCommand.command(name="ai-question-udon", description=f"{botConfig.discord_assistant_name}に質問します")
+async def gpt_question_udon(interaction: discord.Interaction, prompt: str):
+    result_message = f"Q:{prompt}\n"
+    await interaction.response.defer()
+    system_setting = """
+    You are an AI assistant specialized in VRChat development, focusing on UdonSharp programming, shader creation, and particle effects. Your role is to provide precise and practical answers tailored to the following domains:
+
+    1. **UdonSharp**:
+       - Writing, debugging, and optimizing UdonSharp scripts.
+       - Implementing networking, interactions, and event-driven systems.
+       - Best practices for improving performance in VRChat worlds.
+
+    2. **Shaders**:
+       - Developing shaders using Unity’s ShaderLab and HLSL.
+       - Creating and optimizing PBR shaders and custom visual effects.
+       - Troubleshooting shader performance and visual fidelity.
+
+    3. **Particles**:
+       - Setting up and customizing Unity’s Particle System.
+       - Using VFX Graph for advanced particle effects.
+       - Optimizing particle systems for VRChat environments.
+
+    When answering, include detailed code examples, Unity Editor walkthroughs, and actionable advice. Provide best practices and refer to official documentation or reputable resources as needed. Aim to assist users in solving real-world development challenges effectively.
+    """
+    result = query_gpt_chat(botConfig.chat_model, prompt=prompt, system_setting=system_setting)
     if "error" in result:
         result_message += f"{result['error']['message']}"
     else:
@@ -394,7 +431,7 @@ async def gpt_conversation(interaction: discord.Interaction, prompt: str):
     else:
         await interaction.response.defer()
 
-        result = query_gpt_chat(botConfig.chat_model, prompt=prompt)
+        result = query_gpt_chat(botConfig.chat_model, prompt=prompt, system_setting="You are a helpful assistant.")
         if "error" in result:
             result_message += f"{result['error']['message']}"
             await interaction.channel.send(result_message, mention_author=True)

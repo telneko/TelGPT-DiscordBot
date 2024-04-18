@@ -295,16 +295,41 @@ async def on_ready():
     await discordCommand.sync()
 
 
-@discordClient.event
-async def on_message(message: discord.Message):
-    if message.author == discordClient.user:
-        return
+# TelGPTがオーナーのスレッド内でのメッセージ受信は会話となる
+async def on_receive_message_in_bot_thread(message: discord.Message):
     channel = message.channel
-    is_in_thread = (channel.type == discord.ChannelType.private_thread
-                    or channel.type == discord.ChannelType.public_thread)
-    if is_in_thread and channel.owner == discordClient.user:
-        # スレッドの中でTelGPTがオーナーの場合は会話セッション
+    # スレッドの中でTelGPTがオーナーの場合は会話セッション
 
+    # 直前のメッセージが回答中のメッセージだったら質問できない
+    async for channelMessage in channel.history(limit=1):
+        if channelMessage.author == discordClient.user and channelMessage.content == Constants.answering_message:
+            await channel.send("回答中は質問できません。しばらくお待ちください。")
+            return
+
+    temporary_message = await channel.send(Constants.answering_message)
+
+    # スレッド内のメッセージを取得
+    prompts = []
+    async for channelMessage in channel.history(limit=10):
+        if channelMessage.author == discordClient.user:
+            prompts.append(Message(role="assistant", content=channelMessage.content))
+        else:
+            prompts.append(Message(role="user", content=channelMessage.content))
+    prompts.reverse()
+
+    # スレッド内のメッセージを使ってAIに質問
+    result = query_gpt_conversation(botConfig.chat_model, prompts=prompts)
+    if "error" in result:
+        await temporary_message.edit(content=f"{result['error']['message']}")
+    else:
+        await temporary_message.edit(content=result['response'])
+    return
+
+
+# TelBOTへのメンションを受け取った場合の処理
+async def on_receive_mention_from_user(message: discord.Message):
+    channel = message.channel
+    if message.content.startswith("画像を加工して") or message.content.startswith("画像を再生成して"):
         # 直前のメッセージが回答中のメッセージだったら質問できない
         async for channelMessage in channel.history(limit=1):
             if channelMessage.author == discordClient.user and channelMessage.content == Constants.answering_message:
@@ -313,22 +338,125 @@ async def on_message(message: discord.Message):
 
         temporary_message = await channel.send(Constants.answering_message)
 
-        # スレッド内のメッセージを取得
-        prompts = []
-        async for channelMessage in channel.history(limit=10):
-            if channelMessage.author == discordClient.user:
-                prompts.append(Message(role="assistant", content=channelMessage.content))
-            else:
-                prompts.append(Message(role="user", content=channelMessage.content))
-        prompts.reverse()
+        if len(message.attachments) == 0:
+            await temporary_message.edit(content="画像が添付されていません")
+            return
+        attachment = message.attachments[0]
+        if attachment.content_type != "image/png" and attachment.content_type != "image/jpeg":
+            await temporary_message.edit(content="画像の形式が正しくありません")
+            return
+        save_file_path = "image.png"
+        try:
+            download_image(attachment.url, save_file_path)
+        except Exception as e:
+            await temporary_message.edit(content=str(e))
+            return
+        response = openAIClient.images.create_variation(
+            model="dall-e-2",
+            image=open(save_file_path, "rb"),
+            n=1,
+            size="1024x1024"
+        )
+        image_url = response.data[0].url
+        embed = discord.Embed()
+        embed.set_image(url=image_url)
+        await temporary_message.edit(content="投稿された画像を元に再生成しました", embed=embed)
+        return  # 画像再生成の処理が終わったので終了
 
-        # スレッド内のメッセージを使ってAIに質問
-        result = query_gpt_conversation(botConfig.chat_model, prompts=prompts)
-        if "error" in result:
-            await temporary_message.edit(content=f"{result['error']['message']}")
-        else:
-            await temporary_message.edit(content=result['response'])
+
+def generate_revise_image_prompt(old_prompts: list[str], new_prompt: str) -> str:
+    first_prompt = old_prompts[0]
+    if len(old_prompts) == 1 or len(old_prompts) == 2:
+        return f"""
+        Initially, the image was requested with the theme "{first_prompt}". 
+        Now, we would like to update and refine this concept with a new request: "{new_prompt}". 
+        Please regenerate the image incorporating these insights.
+        """
+    else:
+        revised_prompts = old_prompts[2:]
+        revised_prompts.reverse()
+        revised_worlds = f"\",\"".join(revised_prompts)
+        revised_worlds = f"\"{revised_worlds}\""
+        return f"""
+        First request: "{first_prompt}".
+        revised requests ordered by time: {revised_worlds}.
+        Latest revise request: "{new_prompt}".
+        """
+
+
+@discordClient.event
+async def on_message(message: discord.Message):
+    if message.author == discordClient.user:
         return
+    channel = message.channel
+
+    is_in_thread = (channel.type == discord.ChannelType.private_thread
+                    or channel.type == discord.ChannelType.public_thread)
+    to_bot_mention = len(message.mentions) == 1 and message.mentions.__contains__(discordClient.user)
+    # メンション先がBotでいて、そのメンション元のメッセージにAttachmentが含まれている場合
+    if to_bot_mention:
+        # 直前のメッセージが回答中のメッセージだったら質問できない
+        async for channelMessage in channel.history(limit=1):
+            if channelMessage.author == discordClient.user and channelMessage.content == Constants.answering_message:
+                await channel.send("回答中は質問できません。しばらくお待ちください。")
+                return
+
+        temporary_message = await channel.send(Constants.answering_message)
+
+        base_message = message.reference.resolved
+        if base_message is None:
+            return
+        if base_message.author == discordClient.user and len(base_message.embeds) > 0:
+            # Botが生成した画像に対するユーザの要望
+            request_prompt: list[str] = []
+            new_prompt = message.content
+            if is_in_thread:
+                # スレッド内部なので依頼ログを漁ってプロンプトを生成
+                # スレッドタイトルが一番最初の質問
+                request_prompt.append(message.channel.name)
+                # スレッドの過去ログを数件遡り追加質問を取得
+                async for first_message in channel.history(limit=10):
+                    if first_message.author != discordClient.user:
+                        request_prompt.append(first_message.content)
+                response = query_gpt_image(botConfig.dalle_model, prompt=generate_revise_image_prompt(request_prompt,
+                                                                                                      new_prompt))
+                if "error" in response:
+                    await temporary_message.edit(content=f"{response['error']['message']}")
+                else:
+                    response = response['response']
+                    embed = discord.Embed()
+                    embed.set_image(url=response['url'])
+                    await temporary_message.edit(content=f"```{translate_text(response['prompt'])}```", embed=embed)
+            else:
+                before_prompt = base_message.content.split("\n")[0].replace("Q:", "")
+                request_prompt.append(before_prompt)
+                response = query_gpt_image(botConfig.dalle_model, prompt=generate_revise_image_prompt(request_prompt,
+                                                                                                      new_prompt))
+                if "error" in response:
+                    await temporary_message.edit(content=f"{response['error']['message']}")
+                else:
+                    # スレッドの生成
+                    thread = await message.channel.create_thread(name=before_prompt, auto_archive_duration=60,
+                                                                 type=discord.ChannelType.public_thread)
+                    response = response['response']
+                    embed = discord.Embed()
+                    embed.set_image(url=response['url'])
+                    await thread.send(content=f"```{translate_text(response['prompt'])}```", embed=embed)
+                    await temporary_message.edit(content=f"スレッドで返信しました {thread.mention}")
+            return  # 画像生成への再支持の処理が終わったので終了
+
+        if is_in_thread:
+            if channel.owner == discordClient.user:
+                await on_receive_message_in_bot_thread(message)
+            else:
+                # スレッドの中でTelGPTがオーナーでない場合は会話セッション
+                return
+        else:
+            if to_bot_mention:
+                await on_receive_mention_from_user(message)
+            else:
+                # botへのメンションがない場合は何もしない
+                return
 
 
 # noinspection PyUnresolvedReferences
@@ -425,4 +553,40 @@ async def bot_create_issue(interaction: discord.Interaction, title: str, message
         await send_message_async(interaction, result_message)
 
 
-discordClient.run(botConfig.discord_token)
+def download_image(url: str, save_file_path: str):
+    response = requests.get(url)
+    with open(save_file_path, 'wb') as file:
+        file.write(response.content)
+
+
+# noinspection PyUnresolvedReferences
+@discordCommand.command(name="ai-recreate-image",
+                        description=f"{botConfig.discord_assistant_name}が画像を再生成します")
+async def bot_create_issue(interaction: discord.Interaction):
+    await interaction.response.defer()
+
+    # discordで投稿された画像をダウンロード
+    message = interaction.message
+    if len(message.attachments) == 0:
+        await interaction.followup.send(content="画像が添付されていません")
+        return
+    attachment = message.attachments[0]
+    if attachment.content_type != "image/png" and attachment.content_type != "image/jpeg":
+        await interaction.followup.send(content="画像の形式が正しくありません")
+        return
+    save_file_path = "image.png"
+    download_image(attachment.url, save_file_path)
+    response = openAIClient.images.create_variation(
+        model="dall-e-2",
+        image=open(save_file_path, "rb"),
+        n=1,
+        size="1024x1024"
+    )
+    image_url = response.data[0].url
+    embed = discord.Embed()
+    embed.set_image(url=image_url)
+    await interaction.followup.send(content="投稿された画像を元に再生成しました", embed=embed)
+
+
+if __name__ == "__main__":
+    discordClient.run(botConfig.discord_token)

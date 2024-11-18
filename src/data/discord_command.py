@@ -3,8 +3,8 @@ from typing import Final
 import discord
 from discord import app_commands
 
-from src.data.configs import botConfig
-from src.data.tel_discord_command import TelDiscordCommand
+from .configs import botConfig
+from .tel_discord_command import TelDiscordCommand
 
 # Discord Bot の設定
 discordIntents = discord.Intents.default()
@@ -52,7 +52,7 @@ async def gemini_question_udon(interaction: discord.Interaction, prompt: str):
 
 
 @discordCommand.command(
-    name="ai-question-openai",
+    name="ai-question",
     description=f"{botConfig.discord_assistant_name} に質問します"
 )
 async def openai_question(interaction: discord.Interaction, prompt: str):
@@ -60,7 +60,7 @@ async def openai_question(interaction: discord.Interaction, prompt: str):
 
 
 @discordCommand.command(
-    name="ai-question-openai-udon",
+    name="ai-question-udon",
     description=f"{botConfig.discord_assistant_name} にUdonに関して質問します"
 )
 async def openai_question_udon(interaction: discord.Interaction, prompt: str):
@@ -68,7 +68,7 @@ async def openai_question_udon(interaction: discord.Interaction, prompt: str):
 
 
 @discordCommand.command(
-    name="ai-image-openai",
+    name="ai-image",
     description=f"{botConfig.discord_assistant_name} で画像生成します"
 )
 async def openai_generate_image(interaction: discord.Interaction, prompt: str):
@@ -84,7 +84,7 @@ async def openai_generate_image(interaction: discord.Interaction, prompt: str):
 
 
 @discordCommand.command(
-    name="ai-conversation-openai",
+    name="ai-conversation",
     description=f"{botConfig.discord_assistant_name} と会話します"
 )
 async def openai_conversation(interaction: discord.Interaction, prompt: str):

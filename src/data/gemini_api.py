@@ -1,7 +1,7 @@
 import google.generativeai as gemini_api
 
-from src.data.configs import botConfig
-from src.domain.gemini_model import GeminiChatModel, GeminiImageModel
+from .configs import botConfig
+from .entities.gemini_model import GeminiChatModel, GeminiImageModel
 
 
 # noinspection PyMethodMayBeStatic

@@ -2,6 +2,8 @@ FROM python:3
 
 WORKDIR /usr/src/python
 
+ENV PYTHONPATH=/usr/src/python
+
 RUN pip install --upgrade pip
 
 COPY requirements.txt ./

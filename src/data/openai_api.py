@@ -1,9 +1,9 @@
 from openai import OpenAI, BadRequestError
 
-from src.data.configs import botConfig
-from src.domain.entity import Message
-from src.domain.openai_chat_model import OpenAIChatModel
-from src.domain.openai_image_model import OpenAIImageModel
+from .configs import botConfig
+from .entities.entity import Message
+from .entities.openai_chat_model import OpenAIChatModel
+from .entities.openai_image_model import OpenAIImageModel
 
 
 # OpenAIのエラーハンドリング. エラーコードによってメッセージを変更

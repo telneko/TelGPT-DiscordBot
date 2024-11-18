@@ -1,13 +1,13 @@
 import discord
 
-from src.data.common_method import download_image, translate_text
-from src.data.configs import botConfig
-from src.data.gemini_api import GeminiAPI
-from src.data.github_api import GithubAPI
-from src.data.openai_api import OpenAIAPI
-from src.domain.constants import Constants
-from src.domain.entity import Message
-from src.domain.telgpt_command import TelGPTCommand
+from .common_method import download_image, translate_text
+from .configs import botConfig
+from .entities.constants import Constants
+from .entities.entity import Message
+from .entities.telgpt_command import TelGPTCommand
+from .gemini_api import GeminiAPI
+from .github_api import GithubAPI
+from .openai_api import OpenAIAPI
 
 
 # noinspection PyMethodMayBeStatic,DuplicatedCode,PyUnresolvedReferences,PyMethodOverriding

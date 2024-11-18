@@ -2,9 +2,9 @@ import os
 from dataclasses import dataclass
 from typing import Final
 
-from ..domain.gemini_model import GeminiChatModel, GeminiImageModel
-from ..domain.openai_chat_model import OpenAIChatModel
-from ..domain.openai_image_model import OpenAIImageModel
+from src.domain.gemini_model import GeminiChatModel, GeminiImageModel
+from src.domain.openai_chat_model import OpenAIChatModel
+from src.domain.openai_image_model import OpenAIImageModel
 
 
 @dataclass

@@ -3,8 +3,8 @@ from typing import Final
 import discord
 from discord import app_commands
 
-from src.configs import botConfig
-from src.data.tel_discord_command import TelDiscordCommand
+from ..data.configs import botConfig
+from ..data.tel_discord_command import TelDiscordCommand
 
 # Discord Bot の設定
 discordIntents = discord.Intents.default()

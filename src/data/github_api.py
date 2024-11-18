@@ -2,8 +2,8 @@ import json
 
 import requests
 
-from src.configs import botConfig
-from src.domain.constants import Constants
+from ..data.configs import botConfig
+from ..domain.constants import Constants
 
 
 # noinspection PyMethodMayBeStatic

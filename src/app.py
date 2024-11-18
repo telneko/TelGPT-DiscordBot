@@ -23,7 +23,7 @@ class Constants:
 class ChatGPTChatModel(Enum):
     GPT_4_O = "gpt-4o"
     GPT_4_O_MINI = "gpt-4o-mini"
-    GPT_O1_PREVIEW = "gpt-o1-preview"
+    GPT_O1_PREVIEW = "o1-preview"
 
 
 # OpenAI ChatGPT の DALL-E モデルデータ
@@ -408,7 +408,8 @@ async def gpt_chat(interaction: discord.Interaction, prompt: str):
 
 
 # noinspection PyUnresolvedReferences
-@discordCommand.command(name="ai-question-udon", description=f"{botConfig.discord_assistant_name}にUdonについて質問します")
+@discordCommand.command(name="ai-question-udon",
+                        description=f"{botConfig.discord_assistant_name}にUdonについて質問します")
 async def gpt_question_udon(interaction: discord.Interaction, prompt: str):
     result_message = f"Q:{prompt}\n"
     await interaction.response.defer()

@@ -1,6 +1,6 @@
 import requests
 
-from src.data.configs import botConfig
+from ..data.configs import botConfig
 
 
 def download_image(url: str, save_file_path: str):

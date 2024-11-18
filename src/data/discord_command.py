@@ -36,8 +36,8 @@ async def gemini_question(interaction: discord.Interaction, prompt: str):
 
 
 @discordCommand.command(
-    name="ai-question-gemini-udon",
-    description=f"{botConfig.discord_assistant_name} (Gemini) にUdonに関して質問します"
+    name="ai-question-dev-vrc-gemini",
+    description=f"{botConfig.discord_assistant_name} (Gemini) にVRChatでの開発に関して質問します"
 )
 async def gemini_question_udon(interaction: discord.Interaction, prompt: str):
     await telDiscordCommand.gemini_question_udon(interaction, prompt)
@@ -60,8 +60,8 @@ async def openai_question(interaction: discord.Interaction, prompt: str):
 
 
 @discordCommand.command(
-    name="ai-question-udon",
-    description=f"{botConfig.discord_assistant_name} にUdonに関して質問します"
+    name="ai-question-dev-vrc",
+    description=f"{botConfig.discord_assistant_name} にVRChatでの開発に関して質問します"
 )
 async def openai_question_udon(interaction: discord.Interaction, prompt: str):
     await telDiscordCommand.openai_question_udon(interaction, prompt)

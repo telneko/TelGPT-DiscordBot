@@ -1,4 +1,4 @@
-openai~=1.17.1
-discord~=2.3.2
-requests~=2.31.0
+openai~=1.54.4
+discord~=2.4.0
+requests~=2.32.3
 aiohttp~=3.9.4

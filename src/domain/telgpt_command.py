@@ -16,6 +16,26 @@ class TelGPTCommand(metaclass=ABCMeta):
         pass
 
     @abstractmethod
+    async def gemini_question_udon(interaction: discord.Interaction, prompt: str):
+        """
+        Gemini を使って Udon の質問に答える
+        :param interaction: Discord の Interaction オブジェクト
+        :param prompt: 質問の内容
+        :return: None
+        """
+        pass
+
+    # @abstractmethod
+    # async def gemini_generate_image(interaction: discord.Interaction, prompt: str):
+    #     """
+    #     Gemini を使って画像を生成する
+    #     :param interaction: Discord の Interaction オブジェクト
+    #     :param prompt: 画像の内容
+    #     :return: None
+    #     """
+    #     pass
+
+    @abstractmethod
     async def openai_question(interaction: discord.Interaction, prompt: str):
         """
         OpenAI を使って質問に答える
@@ -45,14 +65,14 @@ class TelGPTCommand(metaclass=ABCMeta):
         """
         pass
 
-    @abstractmethod
-    async def openai_recreate_image(interaction: discord.Interaction):
-        """
-        OpenAI を使って画像を再生成する
-        :param interaction: Discord の Interaction オブジェクト
-        :return: None
-        """
-        pass
+    # @abstractmethod
+    # async def openai_recreate_image(interaction: discord.Interaction):
+    #     """
+    #     OpenAI を使って画像を再生成する
+    #     :param interaction: Discord の Interaction オブジェクト
+    #     :return: None
+    #     """
+    #     pass
 
     @abstractmethod
     async def openai_conversation(interaction: discord.Interaction, prompt: str):

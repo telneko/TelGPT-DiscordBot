@@ -35,6 +35,10 @@ class OpenAIAPI:
                 messages=[
                     {
                         "role": "system",
+                        "content": "Your response should be in Japanese.",
+                    },
+                    {
+                        "role": "system",
                         "content": system_setting,
                     },
                     {

@@ -1,4 +1,5 @@
-from src.data.discord_command import discordCommand
+from src.configs import botConfig
+from src.data.discord_command import discordClient
 
 if __name__ == "__main__":
-    discordCommand.run()
+    discordClient.run(token=botConfig.discord_token)

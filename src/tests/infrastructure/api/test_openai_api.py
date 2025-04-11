@@ -67,7 +67,7 @@ def test_question_success(mock_openai_client):
     assert "response" in result
     assert result["response"] == "This is a test response"
     
-    # 正しい引数で対話APIが呼び出されたかチェック
+    # 正しい変数でAPIが呼び出されたかチェック
     mock_completions.create.assert_called_once()
     call_args = mock_completions.create.call_args[1]
     assert call_args["model"] == OpenAIChatModel.GPT_4_O_MINI.value
@@ -78,12 +78,17 @@ def test_question_success(mock_openai_client):
 def test_question_api_error(mock_openai_client):
     # APIエラー発生時のテスト
     from openai import BadRequestError
+    from openai.types import ErrorObject
+
+    # 新しいバージョンのOpenAI SDKに対応したモックエラー
     error = BadRequestError(
         message="Bad request",
-        code="bad_request",
-        param=None,
-        type=None,
+        response=MagicMock(),
+        body={"error": {"message": "Bad request", "type": "bad_request"}},
     )
+    # エラーのコードを後付けで設定
+    error.code = "bad_request"
+    
     mock_openai_client.chat.completions.create.side_effect = error
     
     api = OpenAIAPI()
@@ -126,7 +131,7 @@ def test_conversation_success(mock_openai_client):
     assert "response" in result
     assert result["response"] == "Conversation response"
     
-    # 正しい引数でAPIが呼び出されたかチェック
+    # 正しい変数でAPIが呼び出されたかチェック
     mock_completions.create.assert_called_once()
     call_args = mock_completions.create.call_args[1]
     assert call_args["model"] == OpenAIChatModel.GPT_4_O_MINI.value
@@ -158,7 +163,7 @@ def test_generate_image_success(mock_openai_client):
     assert result["response"]["url"] == "https://example.com/image.png"
     assert result["response"]["prompt"] == "Revised prompt"
     
-    # 正しい引数でAPIが呼び出されたかチェック
+    # 正しい変数でAPIが呼び出されたかチェック
     mock_images.generate.assert_called_once_with(
         model=OpenAIImageModel.DALL_E_3.value,
         prompt="Generate a cat image",

@@ -52,6 +52,22 @@ async def gemini_question_udon(interaction: discord.Interaction, prompt: str):
 
 
 @discordCommand.command(
+    name="ai-question-claude",
+    description=f"{botConfig.discord_assistant_name} (Claude) に質問します"
+)
+async def claude_question(interaction: discord.Interaction, prompt: str):
+    await telDiscordCommand.claude_question(interaction, prompt)
+
+
+@discordCommand.command(
+    name="ai-question-dev-vrc-claude",
+    description=f"{botConfig.discord_assistant_name} (Claude) にVRChatでの開発に関して質問します"
+)
+async def claude_question_udon(interaction: discord.Interaction, prompt: str):
+    await telDiscordCommand.claude_question_udon(interaction, prompt)
+
+
+@discordCommand.command(
     name="ai-question",
     description=f"{botConfig.discord_assistant_name} に質問します"
 )
@@ -93,7 +109,7 @@ async def openai_conversation(interaction: discord.Interaction, prompt: str):
 
 @discordCommand.command(
     name="ai-create-issue",
-    description=f"{botConfig.discord_assistant_name} に対する要望を投稿します"
+    description=f"{botConfig.discord_assistant_name} に関する要望を送信します"
 )
 async def git_create_issue(interaction: discord.Interaction, title: str, message: str):
     await telDiscordCommand.git_create_issue(interaction, title, message)

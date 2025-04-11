@@ -52,7 +52,7 @@ async def on_disconnect():
     """切断された時のイベントハンドラ"""
     if status_channel:
         try:
-            # 非同期関数を使用してるためループがないとエラーになる可能性がある
+            # 非同期関数を使用しているためループがないとエラーになる可能性がある
             # discordClientがまだアクティブな場合のみ実行
             if not discordClient.is_closed():
                 await status_channel.send(Constants.bot_reconnecting_message)
@@ -84,9 +84,9 @@ async def bot_status(interaction: discord.Interaction, action: str = "check"):
     """
     global status_channel
     
-    # 権限チェック（サーバー管理者のみ許可）
+    # 権限チェック（サーバ管理者のみ許可）
     if not interaction.user.guild_permissions.administrator:
-        await interaction.response.send_message("このコマンドはサーバー管理者のみ使用できます。", ephemeral=True)
+        await interaction.response.send_message("このコマンドはサーバ管理者のみ使用できます。", ephemeral=True)
         return
     
     # ステータスチャンネル設定確認
@@ -114,10 +114,10 @@ async def bot_status(interaction: discord.Interaction, action: str = "check"):
             return
     
     if action.lower() == "check":
-        # ボットの状態を確認して返答
+        # ボットの状態を確認して返却
         latency = round(discordClient.latency * 1000)  # ミリ秒に変換
         status_info = (
-            f"**ボットステータス情報**\n"
+            f"**ボットステータス状況**\n"
             f"- ステータス: オンライン\n"
             f"- レイテンシ: {latency}ms\n"
             f"- ステータスチャンネル: {status_channel.mention if status_channel else '未設定'}"
@@ -196,12 +196,29 @@ async def openai_question(interaction: discord.Interaction, prompt: str):
 async def openai_question_udon(interaction: discord.Interaction, prompt: str):
     await telDiscordCommand.openai_question_udon(interaction, prompt)
 
+
 @discordCommand.command(
     name="ai-image",
     description=f"{botConfig.discord_assistant_name} で画像生成します"
 )
 async def openai_generate_image(interaction: discord.Interaction, prompt: str):
     await telDiscordCommand.openai_generate_image(interaction, prompt)
+
+
+# Stable Diffusion用の画像生成コマンドを追加
+@discordCommand.command(
+    name="ai-image-stable",
+    description=f"{botConfig.discord_assistant_name} (Stable Diffusion) で画像生成します"
+)
+async def stablediffusion_generate_image(interaction: discord.Interaction, prompt: str, negative_prompt: str = None):
+    """Stable Diffusionで画像を生成するコマンドハンドラ
+    
+    Args:
+        interaction: Discordのインタラクション
+        prompt: 画像生成のためのプロンプト
+        negative_prompt: 生成から除外する要素を指定するネガティブプロンプト（省略可）
+    """
+    await telDiscordCommand.stablediffusion_generate_image(interaction, prompt, negative_prompt)
 
 
 # @discordCommand.command(

@@ -9,6 +9,7 @@ from .gemini_api import GeminiAPI
 from .github_api import GithubAPI
 from .openai_api import OpenAIAPI
 from .langchain_claude_api import LangchainClaudeAPI  # 追加
+from .stability_api import StabilityAPI  # 追加
 
 
 # noinspection PyMethodMayBeStatic,DuplicatedCode,PyUnresolvedReferences,PyMethodOverriding
@@ -18,6 +19,7 @@ class TelDiscordCommand(TelGPTCommand):
     geminiApi: GeminiAPI
     githubApi: GithubAPI
     langchainClaudeApi: LangchainClaudeAPI  # 追加
+    stabilityApi: StabilityAPI  # 追加: Stability API クライアント
 
     def __init__(self, discord_client: discord.Client):
         self.discord_client = discord_client
@@ -25,6 +27,7 @@ class TelDiscordCommand(TelGPTCommand):
         self.geminiApi = GeminiAPI()
         self.githubApi = GithubAPI()
         self.langchainClaudeApi = LangchainClaudeAPI()  # 追加
+        self.stabilityApi = StabilityAPI()  # 追加: Stability API クライアントの初期化
 
     async def send_message_async(self, interaction: discord.Interaction, message: str):
         # message が 2000 文字以上だったら 1800 文字ごとに分割して送信
@@ -44,7 +47,7 @@ class TelDiscordCommand(TelGPTCommand):
         channel = message.channel
         # スレッドの中でTelGPTがオーナーの場合は会話セッション
 
-        # 現在のメッセージが回答中のメッセージだったら質問できない
+        # 現在のメッセージが回答中のメッセージだったら回答できない
         async for channelMessage in channel.history(limit=1):
             if channelMessage.author == self.discord_client.user and channelMessage.content == Constants.answering_message:
                 await channel.send("回答中は質問できません。しばらくお待ちください。")
@@ -101,7 +104,7 @@ class TelDiscordCommand(TelGPTCommand):
             image_url = response['response'].url
             embed = discord.Embed()
             embed.set_image(url=image_url)
-            await temporary_message.edit(content="生成された画像を基に再生成しました", embed=embed)
+            await temporary_message.edit(content="生成された画像を元に再生成しました", embed=embed)
             return  # 画像再生成の処理が終わったので終了
 
     def generate_revise_image_prompt(self, old_prompts: list[str], new_prompt: str) -> str:
@@ -131,7 +134,7 @@ class TelDiscordCommand(TelGPTCommand):
         is_in_thread = (channel.type == discord.ChannelType.private_thread
                      or channel.type == discord.ChannelType.public_thread)
         to_bot_mention = len(message.mentions) == 1 and message.mentions.__contains__(self.discord_client.user)
-        # メンション先がBotでいて、そのメンション元のメッセージにAttachmentが含まれている場合
+        # メンション先がBotであて、そのメンション元のメッセージにAttachmentが含まれている場合
         if to_bot_mention:
             # 現在のメッセージが回答中のメッセージだったら質問できない
             async for channelMessage in channel.history(limit=1):
@@ -145,14 +148,14 @@ class TelDiscordCommand(TelGPTCommand):
             if base_message is None:
                 return
             if base_message.author == self.discord_client.user and len(base_message.embeds) > 0:
-                # Botが生成した画像に関するユーザの要望
+                # Botが生成した画像に対するユーザの要望
                 request_prompt: list[str] = []
                 new_prompt = message.content
                 if is_in_thread:
-                    # スレッド内部なので履歴ログを持ってプロンプトを生成
+                    # スレッド内部なのでチャット履歴を持ってプロンプトを生成
                     # スレッドタイトルが一番最初の質問
                     request_prompt.append(message.channel.name)
-                    # スレッドの最初ログを数件取得質問を取得
+                    # スレッドの最初ログを数取得質問を取得
                     async for first_message in channel.history(limit=10):
                         if first_message.author != self.discord_client.user:
                             request_prompt.append(first_message.content)
@@ -193,8 +196,8 @@ class TelDiscordCommand(TelGPTCommand):
                         embed = discord.Embed()
                         embed.set_image(url=response['url'])
                         await thread.send(content=f"```{translate_text(response['prompt'])}```", embed=embed)
-                        await temporary_message.edit(content=f"スレッドで返信しました {thread.mention}")
-                return  # 画像生成への再支援の処理が終わったので終了
+                        await temporary_message.edit(content=f"スレッドで送信しました {thread.mention}")
+                return  # 画像生成への返答の処理が終わったので終了
 
             if is_in_thread:
                 if channel.owner == self.discord_client.user:
@@ -259,7 +262,7 @@ class TelDiscordCommand(TelGPTCommand):
 
     async def claude_question(self, interaction: discord.Interaction, prompt: str):
         """
-        Claude に質問を送信し、応答を返すコマンド処理
+        Claude に質問を送信し、回答を返すコマンド処理
         
         Args:
             interaction: Discord のインタラクション
@@ -403,6 +406,45 @@ class TelDiscordCommand(TelGPTCommand):
             result_message += f"```{translated_prompt}```"
             await interaction.followup.send(content=result_message, embed=embed)
 
+    # 追加: Stable Diffusion で画像生成を行うメソッド
+    async def stablediffusion_generate_image(self, interaction: discord.Interaction, prompt: str, negative_prompt: str = None):
+        """
+        Stable Diffusion APIを使用して画像を生成する
+
+        Args:
+            interaction: Discord インタラクション
+            prompt: 画像生成のプロンプト
+            negative_prompt: ネガティブプロンプト（生成から除外したい要素）
+        """
+        result_message = f"Q:{prompt}\n"
+        if negative_prompt:
+            result_message += f"Negative: {negative_prompt}\n"
+        
+        await interaction.response.defer()
+        
+        # Stability API を使って画像生成
+        result = self.stabilityApi.generate_image(
+            model=botConfig.stable_diffusion_model,
+            prompt=prompt,
+            negative_prompt=negative_prompt
+        )
+        
+        if "error" in result:
+            result_message += f"{result['error']['message']}"
+            await interaction.followup.send(content=result_message)
+        else:
+            response = result['response']
+            embed = discord.Embed()
+            embed.set_image(url=response['url'])
+            
+            # シード値などの情報を含める
+            seed_info = ""
+            if response.get('seed'):
+                seed_info = f" (Seed: {response['seed']})"
+                
+            result_message += f"```Generated with Stable Diffusion{seed_info}```"
+            await interaction.followup.send(content=result_message, embed=embed)
+
     # async def openai_recreate_image(self, interaction: discord.Interaction):
     #     await interaction.response.defer()
     #
@@ -424,12 +466,12 @@ class TelDiscordCommand(TelGPTCommand):
     #     image_url = response.data[0].url
     #     embed = discord.Embed()
     #     embed.set_image(url=image_url)
-    #     await interaction.followup.send(content="送信された画像を基に再生成しました", embed=embed)
+    #     await interaction.followup.send(content="送信された画像を元に再生成しました", embed=embed)
 
     async def openai_conversation(self, interaction: discord.Interaction, prompt: str):
         result_message = f"Q:{prompt}\n"
         is_in_thread = (interaction.channel.type == discord.ChannelType.private_thread
-                      or interaction.channel.type == discord.ChannelType.public_thread)
+                     or interaction.channel.type == discord.ChannelType.public_thread)
         if is_in_thread:
             await interaction.channel.send("このコマンドはスレッド内では使用できません。", mention_author=True)
         else:

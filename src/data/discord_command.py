@@ -1,10 +1,11 @@
-from typing import Final
+from typing import Final, Optional
 
 import discord
 from discord import app_commands
 
 from .configs import botConfig
 from .tel_discord_command import TelDiscordCommand
+from .entities.constants import Constants
 
 # Discord Bot の設定
 discordIntents = discord.Intents.default()
@@ -16,15 +17,59 @@ telDiscordCommand: Final[TelDiscordCommand] = TelDiscordCommand(
     discord_client=discordClient,
 )
 
+# ステータス通知用の変数
+status_channel: Optional[discord.TextChannel] = None
 
 @discordClient.event
 async def on_ready():
+    global status_channel
+    
+    # ステータス通知チャンネルの取得
+    if botConfig.status_channel_id:
+        try:
+            channel_id = int(botConfig.status_channel_id)
+            status_channel = discordClient.get_channel(channel_id)
+            # 起動通知の送信
+            if status_channel:
+                await status_channel.send(Constants.bot_started_message)
+            else:
+                print(f"Warning: Could not find status channel with ID {channel_id}")
+        except ValueError:
+            print(f"Error: Invalid status channel ID format: {botConfig.status_channel_id}")
+        except Exception as e:
+            print(f"Error sending status notification: {str(e)}")
+    
     await discordCommand.sync()
 
 
 @discordClient.event
 async def on_message(message: discord.Message):
     await telDiscordCommand.on_message(message)
+
+
+@discordClient.event
+async def on_disconnect():
+    """切断された時のイベントハンドラ"""
+    global status_channel
+    if status_channel:
+        try:
+            # 非同期関数を使用してるためループがないとエラーになる可能性がある
+            # discordClientがまだアクティブな場合のみ実行
+            if not discordClient.is_closed():
+                await status_channel.send(Constants.bot_reconnecting_message)
+        except Exception as e:
+            print(f"Error sending disconnect notification: {str(e)}")
+
+
+@discordClient.event
+async def on_resumed():
+    """再接続した時のイベントハンドラ"""
+    global status_channel
+    if status_channel:
+        try:
+            await status_channel.send(Constants.bot_resumed_message)
+        except Exception as e:
+            print(f"Error sending resume notification: {str(e)}")
 
 
 @discordCommand.command(
@@ -81,7 +126,6 @@ async def openai_question(interaction: discord.Interaction, prompt: str):
 )
 async def openai_question_udon(interaction: discord.Interaction, prompt: str):
     await telDiscordCommand.openai_question_udon(interaction, prompt)
-
 
 @discordCommand.command(
     name="ai-image",

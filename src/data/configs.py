@@ -17,6 +17,7 @@ class BotConfig:
     gemini_api_key: str
     github_pat: str
     claude_api_key: str  # 追加
+    status_channel_id: str  # 追加：ステータス通知チャンネルID
 
     openai_chat_model: OpenAIChatModel
     openai_image_model: OpenAIImageModel
@@ -33,6 +34,10 @@ class BotConfig:
         self.gemini_api_key = os.getenv("TEL_GPT_GEMINI_TOKEN")
         self.github_pat = os.getenv("GITHUB_ISSUE_PAT")
         self.claude_api_key = os.getenv("TEL_GPT_CLAUDE_TOKEN")  # 追加
+        
+        # ステータス通知チャンネルIDの設定（環境変数から取得、未設定の場合はNone）
+        self.status_channel_id = os.getenv("TEL_GPT_STATUS_CHANNEL_ID")
+        
         self.openai_chat_model = OpenAIChatModel.GPT_4_O_MINI
         self.openai_image_model = OpenAIImageModel.DALL_E_3
         self.gemini_chat_model = GeminiChatModel.GEMINI_1_5_FLASH

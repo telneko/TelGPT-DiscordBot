@@ -50,7 +50,7 @@ async def on_message(message: discord.Message):
 @discordClient.event
 async def on_disconnect():
     """切断された時のイベントハンドラ"""
-    global status_channel
+    # global status_channelの宣言を削除（読み取りのみの場合は不要）
     if status_channel:
         try:
             # 非同期関数を使用してるためループがないとエラーになる可能性がある
@@ -64,7 +64,7 @@ async def on_disconnect():
 @discordClient.event
 async def on_resumed():
     """再接続した時のイベントハンドラ"""
-    global status_channel
+    # global status_channelの宣言を削除（読み取りのみの場合は不要）
     if status_channel:
         try:
             await status_channel.send(Constants.bot_resumed_message)

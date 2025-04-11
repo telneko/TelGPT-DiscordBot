@@ -50,7 +50,6 @@ async def on_message(message: discord.Message):
 @discordClient.event
 async def on_disconnect():
     """切断された時のイベントハンドラ"""
-    # global status_channelの宣言を削除（読み取りのみの場合は不要）
     if status_channel:
         try:
             # 非同期関数を使用してるためループがないとエラーになる可能性がある
@@ -64,7 +63,6 @@ async def on_disconnect():
 @discordClient.event
 async def on_resumed():
     """再接続した時のイベントハンドラ"""
-    # global status_channelの宣言を削除（読み取りのみの場合は不要）
     if status_channel:
         try:
             await status_channel.send(Constants.bot_resumed_message)
@@ -96,7 +94,19 @@ async def bot_status(interaction: discord.Interaction, action: str = "check"):
         try:
             channel_id = int(botConfig.status_channel_id)
             status_channel = discordClient.get_channel(channel_id)
-        except (ValueError, Exception) as e:
+            if not status_channel:
+                await interaction.response.send_message(
+                    f"ステータスチャンネル(ID: {channel_id})が見つかりませんでした。", 
+                    ephemeral=True
+                )
+                return
+        except ValueError:
+            await interaction.response.send_message(
+                f"ステータスチャンネルIDの形式が無効です: {botConfig.status_channel_id}", 
+                ephemeral=True
+            )
+            return
+        except Exception as e:
             await interaction.response.send_message(
                 f"ステータスチャンネルの設定に問題があります: {str(e)}", 
                 ephemeral=True

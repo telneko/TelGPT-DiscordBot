@@ -72,6 +72,65 @@ async def on_resumed():
             print(f"Error sending resume notification: {str(e)}")
 
 
+# 管理用コマンド - ステータス通知の手動送信
+@discordCommand.command(
+    name="bot-status",
+    description="ボットの現在のステータスを確認または通知します"
+)
+async def bot_status(interaction: discord.Interaction, action: str = "check"):
+    """ボットの状態を確認または通知する管理コマンド
+    
+    Args:
+        interaction: Discordのインタラクション
+        action: 実行するアクション（"check": 状態確認、"notify": 通知送信）
+    """
+    global status_channel
+    
+    # 権限チェック（サーバー管理者のみ許可）
+    if not interaction.user.guild_permissions.administrator:
+        await interaction.response.send_message("このコマンドはサーバー管理者のみ使用できます。", ephemeral=True)
+        return
+    
+    # ステータスチャンネル設定確認
+    if not status_channel and botConfig.status_channel_id:
+        try:
+            channel_id = int(botConfig.status_channel_id)
+            status_channel = discordClient.get_channel(channel_id)
+        except (ValueError, Exception) as e:
+            await interaction.response.send_message(
+                f"ステータスチャンネルの設定に問題があります: {str(e)}", 
+                ephemeral=True
+            )
+            return
+    
+    if action.lower() == "check":
+        # ボットの状態を確認して返答
+        latency = round(discordClient.latency * 1000)  # ミリ秒に変換
+        status_info = (
+            f"**ボットステータス情報**\n"
+            f"- ステータス: オンライン\n"
+            f"- レイテンシ: {latency}ms\n"
+            f"- ステータスチャンネル: {status_channel.mention if status_channel else '未設定'}"
+        )
+        await interaction.response.send_message(status_info, ephemeral=True)
+    
+    elif action.lower() == "notify":
+        # 現在の状態を手動で通知
+        if status_channel:
+            await status_channel.send(Constants.bot_started_message)
+            await interaction.response.send_message("ステータス通知を送信しました。", ephemeral=True)
+        else:
+            await interaction.response.send_message(
+                "ステータスチャンネルが設定されていないため通知を送信できません。",
+                ephemeral=True
+            )
+    else:
+        await interaction.response.send_message(
+            "無効なアクションです。'check'または'notify'を指定してください。", 
+            ephemeral=True
+        )
+
+
 @discordCommand.command(
     name="ai-question-gemini",
     description=f"{botConfig.discord_assistant_name} (Gemini) に質問します"

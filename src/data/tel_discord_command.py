@@ -427,41 +427,54 @@ class TelDiscordCommand(TelGPTCommand):
         await interaction.response.defer()
         
         try:
-            # Stability API を使って画像生成
-            result = self.stabilityApi.generate_image(
-                model=botConfig.stable_diffusion_model,
+            # Prompt を OpenAI で StableDiffusion 用の英語プロンプトに変換
+            # OpenAI API を使用してプロンプトを翻訳
+            # こちらのプロンプトを
+            gen_translated_prompt = self.openAIApi.question(
+                model=botConfig.openai_chat_model,
                 prompt=prompt,
-                negative_prompt=negative_prompt
+                system_setting="You are a bot that simply responds to the user's input prompts with English prompts for StableDiffusion. You do not need to respond with “Yes, sir” or “OK”, just simply respond with the prompt for SD."
             )
-            
-            if "error" in result:
-                # エラーがあった場合はログ出力してからユーザーに通知
-                logger.error(f"Stability API Error: {result['error']['message']}")
-                result_message += f"画像生成エラー: {result['error']['message']}"
-                await interaction.followup.send(content=result_message)
-                return
-                
-            response = result['response']
-            
-            # ファイルが存在し、読み込み可能か確認
-            file_path = response['url']
-            if not os.path.exists(file_path) or not os.path.isfile(file_path):
-                logger.error(f"Generated image file not found: {file_path}")
-                await interaction.followup.send(content=f"画像ファイルが見つかりません。生成処理は成功しましたが、ファイルの保存に問題が発生した可能性があります。")
-                return
-                
-            # Discord用のFileオブジェクトを作成して送信
-            discord_file = discord.File(file_path, filename="generated_image.png")
-            
-            # シード情報の追加
-            seed_info = ""
-            if response.get('seed'):
-                seed_info = f" (Seed: {response['seed']})"
-                
-            result_message += f"```Generated with Stable Diffusion{seed_info}```"
-            
-            # ファイルと一緒にメッセージを送信
-            await interaction.followup.send(content=result_message, file=discord_file)
+            if "error" in gen_translated_prompt:
+                result_message += f"{gen_translated_prompt['error']['message']}"
+                await interaction.channel.send(result_message, mention_author=True)
+            else:
+                # Stability API を使って画像生成
+                request_message = gen_translated_prompt['response']
+                result = self.stabilityApi.generate_image(
+                    model=botConfig.stable_diffusion_model,
+                    prompt=request_message,
+                    negative_prompt=negative_prompt
+                )
+
+                if "error" in result:
+                    # エラーがあった場合はログ出力してからユーザーに通知
+                    logger.error(f"Stability API Error: {result['error']['message']}")
+                    result_message += f"画像生成エラー: {result['error']['message']}"
+                    await interaction.followup.send(content=result_message)
+                    return
+
+                response = result['response']
+
+                # ファイルが存在し、読み込み可能か確認
+                file_path = response['url']
+                if not os.path.exists(file_path) or not os.path.isfile(file_path):
+                    logger.error(f"Generated image file not found: {file_path}")
+                    await interaction.followup.send(content=f"画像ファイルが見つかりません。生成処理は成功しましたが、ファイルの保存に問題が発生した可能性があります。")
+                    return
+
+                # Discord用のFileオブジェクトを作成して送信
+                discord_file = discord.File(file_path, filename="generated_image.png")
+
+                # シード情報の追加
+                seed_info = ""
+                if response.get('seed'):
+                    seed_info = f" (Seed: {response['seed']})"
+
+                result_message += f"```{request_message}```"
+
+                # ファイルと一緒にメッセージを送信
+                await interaction.followup.send(content=result_message, file=discord_file)
             
         except Exception as e:
             # 予期しないエラーの場合も詳細を記録して通知

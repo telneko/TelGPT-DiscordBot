@@ -1,4 +1,6 @@
 import discord
+import os
+import logging
 
 from .common_method import download_image, translate_text
 from .configs import botConfig
@@ -11,6 +13,8 @@ from .openai_api import OpenAIAPI
 from .langchain_claude_api import LangchainClaudeAPI  # 追加
 from .stability_api import StabilityAPI  # 追加
 
+# ロガー設定
+logger = logging.getLogger('discord')
 
 # noinspection PyMethodMayBeStatic,DuplicatedCode,PyUnresolvedReferences,PyMethodOverriding
 class TelDiscordCommand(TelGPTCommand):
@@ -132,9 +136,9 @@ class TelDiscordCommand(TelGPTCommand):
         channel = message.channel
 
         is_in_thread = (channel.type == discord.ChannelType.private_thread
-                     or channel.type == discord.ChannelType.public_thread)
+                    or channel.type == discord.ChannelType.public_thread)
         to_bot_mention = len(message.mentions) == 1 and message.mentions.__contains__(self.discord_client.user)
-        # メンション先がBotであて、そのメンション元のメッセージにAttachmentが含まれている場合
+        # メンション先がBotであて、そのメンション内のメッセージにAttachmentが含まれている場合
         if to_bot_mention:
             # 現在のメッセージが回答中のメッセージだったら質問できない
             async for channelMessage in channel.history(limit=1):
@@ -148,7 +152,7 @@ class TelDiscordCommand(TelGPTCommand):
             if base_message is None:
                 return
             if base_message.author == self.discord_client.user and len(base_message.embeds) > 0:
-                # Botが生成した画像に対するユーザの要望
+                # Botが生成した画像に関するユーザの要求
                 request_prompt: list[str] = []
                 new_prompt = message.content
                 if is_in_thread:
@@ -422,28 +426,47 @@ class TelDiscordCommand(TelGPTCommand):
         
         await interaction.response.defer()
         
-        # Stability API を使って画像生成
-        result = self.stabilityApi.generate_image(
-            model=botConfig.stable_diffusion_model,
-            prompt=prompt,
-            negative_prompt=negative_prompt
-        )
-        
-        if "error" in result:
-            result_message += f"{result['error']['message']}"
-            await interaction.followup.send(content=result_message)
-        else:
-            response = result['response']
-            embed = discord.Embed()
-            embed.set_image(url=response['url'])
+        try:
+            # Stability API を使って画像生成
+            result = self.stabilityApi.generate_image(
+                model=botConfig.stable_diffusion_model,
+                prompt=prompt,
+                negative_prompt=negative_prompt
+            )
             
-            # シード値などの情報を含める
+            if "error" in result:
+                # エラーがあった場合はログ出力してからユーザーに通知
+                logger.error(f"Stability API Error: {result['error']['message']}")
+                result_message += f"画像生成エラー: {result['error']['message']}"
+                await interaction.followup.send(content=result_message)
+                return
+                
+            response = result['response']
+            
+            # ファイルが存在し、読み込み可能か確認
+            file_path = response['url']
+            if not os.path.exists(file_path) or not os.path.isfile(file_path):
+                logger.error(f"Generated image file not found: {file_path}")
+                await interaction.followup.send(content=f"画像ファイルが見つかりません。生成処理は成功しましたが、ファイルの保存に問題が発生した可能性があります。")
+                return
+                
+            # Discord用のFileオブジェクトを作成して送信
+            discord_file = discord.File(file_path, filename="generated_image.png")
+            
+            # シード情報の追加
             seed_info = ""
             if response.get('seed'):
                 seed_info = f" (Seed: {response['seed']})"
                 
             result_message += f"```Generated with Stable Diffusion{seed_info}```"
-            await interaction.followup.send(content=result_message, embed=embed)
+            
+            # ファイルと一緒にメッセージを送信
+            await interaction.followup.send(content=result_message, file=discord_file)
+            
+        except Exception as e:
+            # 予期しないエラーの場合も詳細を記録して通知
+            logger.exception(f"Unexpected error in stablediffusion_generate_image: {str(e)}")
+            await interaction.followup.send(content=f"画像生成中に予期しないエラーが発生しました: {str(e)}")
 
     # async def openai_recreate_image(self, interaction: discord.Interaction):
     #     await interaction.response.defer()
@@ -471,7 +494,7 @@ class TelDiscordCommand(TelGPTCommand):
     async def openai_conversation(self, interaction: discord.Interaction, prompt: str):
         result_message = f"Q:{prompt}\n"
         is_in_thread = (interaction.channel.type == discord.ChannelType.private_thread
-                     or interaction.channel.type == discord.ChannelType.public_thread)
+                   or interaction.channel.type == discord.ChannelType.public_thread)
         if is_in_thread:
             await interaction.channel.send("このコマンドはスレッド内では使用できません。", mention_author=True)
         else:

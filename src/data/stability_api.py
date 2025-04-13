@@ -42,13 +42,13 @@ class StabilityAPI:
             negative_prompt: ネガティブプロンプト（生成に含めたくない要素）
             width: 生成画像の幅
             height: 生成画像の高さ
-            cfg_scale: プロンプトの影響度 (guidance scale)
+            cfg_scale: プロンプトの忠実度 (guidance scale)
             steps: 生成ステップ数
             samples: 生成する画像の数
             
         Returns:
             Dict: レスポンス情報を含む辞書
-                成功時: {'response': {'url': 画像URL, 'prompt': 使用されたプロンプト}}
+                成功時: {'response': {'url': 画像URL, 'prompt': 使用されたプロンプト, 'base64': Base64画像データ}}
                 失敗時: {'error': {'message': エラーメッセージ}}
         """
         try:
@@ -84,6 +84,7 @@ class StabilityAPI:
             
             # レスポンスのステータスコードが成功でない場合
             if response.status_code != 200:
+                print(f"Stability API Error: {response.status_code} - {response.text}")
                 return {
                     "error": {
                         "message": f"API error: {response.status_code} - {response.text}"
@@ -97,25 +98,29 @@ class StabilityAPI:
             if "artifacts" in data and len(data["artifacts"]) > 0:
                 artifact = data["artifacts"][0]
                 
-                # Base64画像データをデコード
-                image_data = base64.b64decode(artifact["base64"])
+                # Base64画像データ
+                image_base64 = artifact["base64"]
                 
-                # 一時ファイルを作成して保存
+                # 一時的なURLをDiscordで使えるURLスキームに変換
+                base64_url = f"data:image/png;base64,{image_base64}"
+                
+                # 一時ファイルを作成して、Discord用の添付ファイルとして使用
+                # このアプローチでは、Discord側で表示可能な一時ファイルを提供
                 temp_image_path = "temp_image.png"
                 with open(temp_image_path, "wb") as f:
-                    f.write(image_data)
+                    f.write(base64.b64decode(image_base64))
                 
-                # 実際のアプリケーションでは、画像をどこかに保存/アップロードして
-                # URLを返す必要があるかもしれませんが、ここではローカルパスを返しています
                 return {
                     "response": {
-                        "url": temp_image_path,
+                        "url": temp_image_path,  # 添付ファイル用のパス
                         "prompt": prompt,
                         "seed": artifact.get("seed", None),
-                        "finish_reason": artifact.get("finish_reason", None)
+                        "finish_reason": artifact.get("finish_reason", None),
+                        "base64": image_base64  # 元のBase64データも保持
                     }
                 }
             else:
+                print("No image was generated from Stability API")
                 return {
                     "error": {
                         "message": "No image was generated"
@@ -123,6 +128,7 @@ class StabilityAPI:
                 }
                 
         except Exception as e:
+            print(f"Error in Stability API: {str(e)}")
             return {
                 "error": {
                     "message": f"Error generating image: {str(e)}"

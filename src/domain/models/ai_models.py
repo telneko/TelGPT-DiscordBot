@@ -7,6 +7,7 @@ class OpenAIChatModel(Enum):
     """
     GPT_4_O = "gpt-4o"
     GPT_4_O_MINI = "gpt-4o-mini"
+    GPT_4_1 = "gpt-4.1"
     GPT_O1_PREVIEW = "o1-preview"
 
 
@@ -22,6 +23,7 @@ class GeminiChatModel(Enum):
     Gemini の対話モデルデータ
     """
     GEMINI_1_5_FLASH = "gemini-1.5-flash"
+    GEMINI_2_0_FLASH = "gemini-2.0-flash"
 
 
 class GeminiImageModel(Enum):

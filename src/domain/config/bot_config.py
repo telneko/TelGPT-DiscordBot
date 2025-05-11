@@ -32,7 +32,7 @@ class BotConfig:
         self.github_pat = os.getenv("GITHUB_ISSUE_PAT")
         self.openai_chat_model = OpenAIChatModel.GPT_4_1
         self.openai_image_model = OpenAIImageModel.DALL_E_3
-        self.gemini_chat_model = GeminiChatModel.GEMINI_1_5_FLASH
+        self.gemini_chat_model = GeminiChatModel.GEMINI_2_0_FLASH
         self.gemini_image_model = GeminiImageModel.IMAGEN_3_0_GENERATE_001
 
 

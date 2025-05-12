@@ -38,15 +38,17 @@ class OpenAIAPI:
                         "content": "Your response should be in Japanese.",
                     },
                     {
-                        "role": "system",
-                        "content": system_setting,
-                    },
-                    {
                         "role": "user",
                         "content": prompt,
                     }
                 ],
             )
+            
+            # 利用しないので一時的にコメントアウト
+            # {
+            #     "role": "system",
+            #     "content": system_setting,
+            # },
             return {
                 "response": response.choices[0].message.content.strip()
             }

@@ -46,27 +46,27 @@ async def on_message(message: discord.Message):
     await telDiscordCommand.on_message(message)
 
 
-@discordClient.event
-async def on_disconnect():
-    """切断された時のイベントハンドラ"""
-    if status_channel:
-        try:
-            # 非同期関数を使用しているためループがないとエラーになる可能性がある
-            # discordClientがまだアクティブな場合のみ実行
-            if not discordClient.is_closed():
-                await status_channel.send(Constants.bot_reconnecting_message)
-        except Exception as e:
-            print(f"Error sending disconnect notification: {str(e)}")
+# @discordClient.event
+# async def on_disconnect():
+#     """切断された時のイベントハンドラ"""
+#     if status_channel:
+#         try:
+#             # 非同期関数を使用しているためループがないとエラーになる可能性がある
+#             # discordClientがまだアクティブな場合のみ実行
+#             if not discordClient.is_closed():
+#                 await status_channel.send(Constants.bot_reconnecting_message)
+#         except Exception as e:
+#             print(f"Error sending disconnect notification: {str(e)}")
 
 
-@discordClient.event
-async def on_resumed():
-    """再接続した時のイベントハンドラ"""
-    if status_channel:
-        try:
-            await status_channel.send(Constants.bot_resumed_message)
-        except Exception as e:
-            print(f"Error sending resume notification: {str(e)}")
+# @discordClient.event
+# async def on_resumed():
+#     """再接続した時のイベントハンドラ"""
+#     if status_channel:
+#         try:
+#             await status_channel.send(Constants.bot_resumed_message)
+#         except Exception as e:
+#             print(f"Error sending resume notification: {str(e)}")
 
 
 # # 管理用コマンド - ステータス通知の手動送信

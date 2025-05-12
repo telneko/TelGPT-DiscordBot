@@ -332,7 +332,7 @@ class TelDiscordCommand(TelGPTCommand):
         result = self.openAIApi.question(
             model=botConfig.openai_chat_model,
             prompt=prompt,
-            system_setting="You are a helpful assistant."
+            system_setting=""
         )
         if "error" in result:
             result_message += f"{result['error']['message']}"

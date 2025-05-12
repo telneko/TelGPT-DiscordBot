@@ -20,26 +20,25 @@ telDiscordCommand: Final[TelDiscordCommand] = TelDiscordCommand(
 # ステータス通知用の変数
 status_channel: Optional[discord.TextChannel] = None
 
-# @discordClient.event
-# async def on_ready():
-    # global status_channel
-    #
+@discordClient.event
+async def on_ready():
+    global status_channel
+    
     # # ステータス通知チャンネルの取得
-    # if botConfig.status_channel_id:
-    #     try:
-    #         channel_id = int(botConfig.status_channel_id)
-    #         status_channel = discordClient.get_channel(channel_id)
-    #         # 起動通知の送信
-    #         if status_channel:
-    #             await status_channel.send(Constants.bot_started_message)
-    #         else:
-    #             print(f"Warning: Could not find status channel with ID {channel_id}")
-    #     except ValueError:
-    #         print(f"Error: Invalid status channel ID format: {botConfig.status_channel_id}")
-    #     except Exception as e:
-    #         print(f"Error sending status notification: {str(e)}")
-    #
-    # await discordCommand.sync()
+    if botConfig.status_channel_id:
+        try:
+            channel_id = int(botConfig.status_channel_id)
+            status_channel = discordClient.get_channel(channel_id)
+            # 起動通知の送信
+            if status_channel:
+                await status_channel.send(Constants.bot_started_message)
+            else:
+                print(f"Warning: Could not find status channel with ID {channel_id}")
+        except ValueError:
+            print(f"Error: Invalid status channel ID format: {botConfig.status_channel_id}")
+        except Exception as e:
+            print(f"Error sending status notification: {str(e)}")
+    await discordCommand.sync()
 
 
 @discordClient.event

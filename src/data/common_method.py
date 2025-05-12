@@ -21,3 +21,16 @@ def translate_text(text: str) -> str:
     response = requests.post(url, data=params)
     result = response.json()
     return result['translations'][0]['text']
+
+# 日本語をDeepLで英語に翻訳
+def translate_text_en(text: str) -> str:
+    url = "https://api-free.deepl.com/v2/translate"
+    params = {
+        "auth_key": botConfig.deepl_api_key,
+        "text": text,
+        "source_lang": "JA",
+        "target_lang": "EN",
+    }
+    response = requests.post(url, data=params)
+    result = response.json()
+    return result['translations'][0]['text']

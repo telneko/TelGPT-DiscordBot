@@ -31,7 +31,7 @@ async def on_ready():
             status_channel = discordClient.get_channel(channel_id)
             # 起動通知の送信
             if status_channel:
-                await status_channel.send(Constants.bot_started_message
+                await status_channel.send(Constants.bot_started_message)
             else:
                 print(f"Warning: Could not find status channel with ID {channel_id}")
         except ValueError:

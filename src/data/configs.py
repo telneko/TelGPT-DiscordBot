@@ -46,8 +46,8 @@ class BotConfig:
         self.openai_image_model = OpenAIImageModel.DALL_E_3
         self.gemini_chat_model = GeminiChatModel.GEMINI_2_0_FLASH
         self.gemini_image_model = GeminiImageModel.IMAGEN_3_0_GENERATE_001
-        self.claude_model = ClaudeModel.CLAUDE_3_7_SONNET  # 変更: Claude 3.7 Sonnet を使用
-        self.stable_diffusion_model = StableDiffusionModel.SDXL_1_0  # 追加: デフォルトではSDXL 1.0を使用
+        self.claude_model = ClaudeModel.CLAUDE_4_0_SONNET
+        self.stable_diffusion_model = StableDiffusionModel.SDXL_1_0
 
 
 # Bot の設定
